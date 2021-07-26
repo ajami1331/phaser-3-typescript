@@ -1,0 +1,49 @@
+name: gh-page
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  deploy_gh_page:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup repo
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Notify build start
+        uses: fjogeleit/http-request-action@master
+        with:
+          url: ${{ secrets.NOTIFY_WEBHOOK }}
+          method: 'POST'
+          data: '{ "content": "build started ${{ github.event.repository.name }}" }'
+      - name: Restore deps and build
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          cache: 'npm'
+      - run: |
+          npm install
+          npm run build
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ secrets.DEPLOY_SOURCE_PATH }}
+      - name: Notify build success
+        if: ${{ success() }}
+        uses: fjogeleit/http-request-action@master
+        with:
+          url: ${{ secrets.NOTIFY_WEBHOOK }}
+          method: 'POST'
+          data: '{ "content": "build success ${{ github.event.repository.name }}" }'
+      - name: Notify build failure
+        if: ${{ failure() }}
+        uses: fjogeleit/http-request-action@master
+        with:
+          url: ${{ secrets.NOTIFY_WEBHOOK }}
+          method: 'POST'
+          data: '{ "content": "build failed ${{ github.event.repository.name }}" }'

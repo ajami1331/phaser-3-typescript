@@ -1,0 +1,1 @@
+Phaser 3 TypeScript template.
